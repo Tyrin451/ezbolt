@@ -10,6 +10,7 @@ class Bolt:
         tag ::str                       - unique ID for each bolt
         x ::float                       - x coordinate
         y ::float                       - y coordinate
+        units ::str                     - "SI" or "imperial"
         
     Attributes:
         dx ::float                      - x distance from CG to bolt (x - x_cg)
@@ -56,11 +57,12 @@ class Bolt:
         .update_forces_ICR()
         .get_moment_ICR()
     """
-    def __init__(self, tag, x, y):
+    def __init__(self, tag, x, y, units):
         # general attributes
         self.tag = tag
         self.x = x
         self.y = y
+        self.units = units
         self.dx = None
         self.dy = None
         self.ro = None
@@ -151,10 +153,16 @@ class Bolt:
     def update_forces_ICR(self, ro_max, Rult):
         """
         Compute bolt forces using ICR method
-        """      
-        D_ULT = 0.34
+        """
+        if self.units == "SI":
+            D_ULT = 8.636 # mm
+            exp_coeff = -0.3937
+        else:
+            D_ULT = 0.34 # inch
+            exp_coeff = -10
+
         deformation = self.ro_ICR[-1] / ro_max * D_ULT
-        force = (1-math.exp(-10*deformation))**(0.55) * Rult
+        force = (1-math.exp(exp_coeff*deformation))**(0.55) * Rult
         moment_icr = force*self.ro_ICR[-1]
         
         # calculate force components in x and y and moment
@@ -177,8 +185,14 @@ class Bolt:
         Used to calculate the ICR coefficient. In particular, it is called by the
         BoltGroup object to calculate sum of moment contribution due to unit load P (i.e. sum(Mi1))
         """
-        D_ULT = 0.34
+        if self.units == "SI":
+            D_ULT = 8.636 # mm
+            exp_coeff = -0.3937
+        else:
+            D_ULT = 0.34 # inch
+            exp_coeff = -10
+
         deformation = self.ro_ICR[-1] / ro_max * D_ULT
-        force = (1-math.exp(-10*deformation))**(0.55)
+        force = (1-math.exp(exp_coeff*deformation))**(0.55)
         moment = force * self.ro_ICR[-1]
         return moment

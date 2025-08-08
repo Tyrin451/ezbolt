@@ -13,10 +13,20 @@ class BoltGroup:
         3. Instant Center of Rotation Method
     
     Input Arguments:
-        None               
+        units ::str                     - "SI" or "imperial"
         
     Attributes: 
-        (units = kip, in unless otherwise noted)
+        units ::str                     - "SI" or "imperial"
+
+        Imperial Units:
+            force = kip
+            length = in
+            moment = kip-in
+
+        SI Units:
+            force = kN
+            length = mm
+            moment = kN-mm
         
         bolts (list(obj)):              - List of bolt objects
         N_bolt (int):                   - number of bolts
@@ -68,8 +78,9 @@ class BoltGroup:
         .add_bolts()
         .solve()
     """
-    def __init__(self):
+    def __init__(self, units="SI"):
         # general geometric attributes
+        self.units = units
         self.bolts = []
         self.N_bolt = 0
         self.x_cg = None
@@ -128,7 +139,7 @@ class BoltGroup:
         Returns:
             None
         """
-        self.bolts.append(ezbolt.bolt.Bolt(self.N_bolt,x,y))
+        self.bolts.append(ezbolt.bolt.Bolt(self.N_bolt,x,y, self.units))
         self.N_bolt += 1
         self.update_geometric_properties()
         
@@ -192,7 +203,7 @@ class BoltGroup:
         for bolt in self.bolts:
             bolt.update_geometry(self.x_cg, self.y_cg)
     
-    def solve(self, Vx, Vy, torsion, bolt_capacity=17.9, verbose=True, ecc_method="AISC"):
+    def solve(self, Vx, Vy, torsion, bolt_capacity=None, verbose=True, ecc_method="AISC"):
         """
         Public method called by user to solve for bolt forces using three methods:
             1. Elastic Method - Superposition
@@ -203,9 +214,11 @@ class BoltGroup:
             Vx                      float:: applied horizontal force
             Vy                      float:: applied vertical force
             torsion                 float:: applied in-plane moment (torsion)
-            bolt_capacity           float:: (OPTIONAL) bolt capacity in kips. Default = 17.9 kips for A325-N 3/4". This argument
-                                            is optional because Cu coefficient is actually independent of bolt capacity. The overall
-                                            connection capacity = Cu * bolt capacity.
+            bolt_capacity           float:: (OPTIONAL) bolt capacity. Default values are based on A325-N 3/4" bolt.
+                                                - 79.6 kN for SI
+                                                - 17.9 kips for imperial
+                                            This argument is optional because Cu coefficient is actually independent of bolt capacity.
+                                            The overall connection capacity = Cu * bolt capacity.
             verbose                 bool::  (OPTIONAL) whether or not to print out status messages. Default = True
             ecc_method              str::   (OPTIONAL) method for calculating vertical eccentricity. "AISC" or "perpendicular". See more note below. 
 
@@ -253,10 +266,14 @@ class BoltGroup:
                 ex = 200 / 50 = 4.0 in
         """
         # store user input
+        if bolt_capacity:
+            self.bolt_capacity = bolt_capacity
+        else:
+            self.bolt_capacity = 79.6 if self.units == "SI" else 17.9
+
         self.Vx = Vx
         self.Vy = Vy
         self.torsion = torsion
-        self.bolt_capacity = bolt_capacity
         
         # calculate resultant and load vector orientation
         self.V_resultant = (Vx**2 + Vy**2)**(1/2)
